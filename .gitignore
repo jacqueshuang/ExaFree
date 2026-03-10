@@ -1,0 +1,9 @@
+# Ignore everything by default so legacy files are not tracked.
+*
+!.gitignore
+!README.md
+!Dockerfile
+!.dockerignore
+!.github/
+!.github/workflows/
+!.github/workflows/docker-build.yml
