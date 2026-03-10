@@ -156,7 +156,10 @@ const registerResult = ref('')
 const authOptions = ref<AuthOptionsResponse | null>(null)
 
 const registrationEnabled = computed(() => authOptions.value?.registration_enabled ?? true)
-const canPasswordLogin = computed(() => authOptions.value?.password_login_enabled ?? true)
+const canPasswordLogin = computed(() => {
+  if (authOptions.value?.password_login_enabled ?? true) return true
+  return username.value.trim().toLowerCase() === 'admin'
+})
 const canPasswordRegister = computed(
   () => (authOptions.value?.registration_enabled ?? true) && (authOptions.value?.password_registration_enabled ?? true)
 )

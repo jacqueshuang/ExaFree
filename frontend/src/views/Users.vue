@@ -9,7 +9,7 @@
         </label>
         <label class="flex items-center gap-2 text-sm text-foreground">
           <input v-model="policy.password_login_enabled" type="checkbox" class="h-4 w-4" />
-          允许账号密码登录
+          允许账号密码登录（管理员不受影响）
         </label>
         <label class="flex items-center gap-2 text-sm text-foreground">
           <input

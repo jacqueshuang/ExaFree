@@ -1315,10 +1315,10 @@ async def user_register(payload: dict = Body(...)):
 async def user_login(request: Request, payload: dict = Body(...)):
     """门户登录（管理员/普通用户/高级用户）。"""
     _require_user_storage()
-    if not USER_AUTH_POLICY.get("password_login_enabled", True):
-        raise HTTPException(403, "Password login is disabled")
     username = normalize_username(payload.get("username"))
     password = payload.get("password") or ""
+    if not USER_AUTH_POLICY.get("password_login_enabled", True) and username != "admin":
+        raise HTTPException(403, "Password login is disabled")
 
     user = await storage.get_api_user_by_username(username)
     if not user or not user.get("is_active"):
