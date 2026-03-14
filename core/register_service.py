@@ -14,6 +14,8 @@ from core.mail_providers import create_temp_mail_client
 from core.proxy_utils import parse_proxy_setting
 
 logger = logging.getLogger("exa.register")
+EMAIL_LOGIN_RETRY_LIMIT = 3
+EMAIL_LOGIN_RETRY_SLEEP_SECONDS = 5
 
 
 @dataclass
@@ -166,11 +168,11 @@ class RegisterService(BaseTaskService[RegisterTask]):
         log_cb("info", f"✅ 邮箱创建成功: {client.email}")
 
         proxy_for_auth, _ = parse_proxy_setting(config.basic.proxy_for_auth)
-        log_cb("info", "🌐 步骤 2/4: 启动浏览器 (模式=headless)...")
         automation = ExaAutomation(
             proxy=proxy_for_auth,
             log_callback=log_cb,
         )
+        log_cb("info", f"🌐 步骤 2/4: 启动浏览器 (模式={automation.browser_mode})...")
         self._add_cancel_hook(task.id, lambda: None)
 
         log_cb("info", "🔐 步骤 3/4: 执行 Exa 登录与初始化...")
@@ -182,14 +184,29 @@ class RegisterService(BaseTaskService[RegisterTask]):
         elif not redeem_coupon_enabled:
             log_cb("info", "🎟️ 兑换码自动兑换未启用，跳过兑换步骤")
 
-        result = automation.register_and_setup(
-            email=client.email,
-            mail_client=client,
-            coupon_code=configured_coupon_code,
-            redeem_coupon=redeem_coupon,
-        )
-        if not result.get("success"):
-            return {"success": False, "error": result.get("error", "Exa 自动化流程失败")}
+        result = None
+        for attempt in range(1, EMAIL_LOGIN_RETRY_LIMIT + 1):
+            if attempt > 1:
+                log_cb("warning", f"⚠️ Exa 邮箱登录暂不可用，开始第 {attempt}/{EMAIL_LOGIN_RETRY_LIMIT} 次重试...")
+            result = automation.register_and_setup(
+                email=client.email,
+                mail_client=client,
+                coupon_code=configured_coupon_code,
+                redeem_coupon=redeem_coupon,
+            )
+            if result.get("success"):
+                break
+            if result.get("error_code") != "exa_email_login_unavailable" or attempt >= EMAIL_LOGIN_RETRY_LIMIT:
+                break
+            log_cb("warning", f"⏳ 等待 {EMAIL_LOGIN_RETRY_SLEEP_SECONDS} 秒后重试 Exa 邮箱登录...")
+            time.sleep(EMAIL_LOGIN_RETRY_SLEEP_SECONDS)
+
+        if not result or not result.get("success"):
+            return {
+                "success": False,
+                "error": (result or {}).get("error", "Exa 自动化流程失败"),
+                "error_code": (result or {}).get("error_code"),
+            }
 
         config_data = result["config"]
         config_data["mail_provider"] = provider

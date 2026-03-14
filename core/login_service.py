@@ -17,6 +17,8 @@ from core.proxy_utils import parse_proxy_setting
 logger = logging.getLogger("exa.login")
 
 CONFIG_CHECK_INTERVAL_SECONDS = 60
+EMAIL_LOGIN_RETRY_LIMIT = 3
+EMAIL_LOGIN_RETRY_SLEEP_SECONDS = 5
 
 
 @dataclass
@@ -186,11 +188,28 @@ class LoginService(BaseTaskService[LoginTask]):
             proxy=proxy_for_auth,
             log_callback=log_cb,
         )
+        log_cb("info", f"🌐 刷新流程浏览器模式: {automation.browser_mode}")
         self._add_cancel_hook(task.id, lambda: None)
         log_cb("info", "🔐 执行 Exa 登录并重建 API key...")
-        result = automation.refresh_api_key(mail_address, client)
-        if not result.get("success"):
-            return {"success": False, "email": account_id, "error": result.get("error", "刷新流程失败")}
+        result = None
+        for attempt in range(1, EMAIL_LOGIN_RETRY_LIMIT + 1):
+            if attempt > 1:
+                log_cb("warning", f"⚠️ Exa 邮箱登录暂不可用，开始第 {attempt}/{EMAIL_LOGIN_RETRY_LIMIT} 次重试...")
+            result = automation.refresh_api_key(mail_address, client)
+            if result.get("success"):
+                break
+            if result.get("error_code") != "exa_email_login_unavailable" or attempt >= EMAIL_LOGIN_RETRY_LIMIT:
+                break
+            log_cb("warning", f"⏳ 等待 {EMAIL_LOGIN_RETRY_SLEEP_SECONDS} 秒后重试 Exa 邮箱登录...")
+            time.sleep(EMAIL_LOGIN_RETRY_SLEEP_SECONDS)
+
+        if not result or not result.get("success"):
+            return {
+                "success": False,
+                "email": account_id,
+                "error": (result or {}).get("error", "刷新流程失败"),
+                "error_code": (result or {}).get("error_code"),
+            }
 
         cfg = result["config"]
         account_data.update(cfg)

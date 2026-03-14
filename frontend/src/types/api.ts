@@ -63,6 +63,7 @@ export interface Stats {
 }
 
 export type TempMailProvider = 'duckmail' | 'moemail' | 'freemail' | 'gptmail' | 'cfmail'
+export type ExaBrowserMode = 'headless' | 'headful'
 
 export interface Settings {
   basic: {
@@ -90,6 +91,7 @@ export interface Settings {
     freemail_verify_ssl?: boolean
     freemail_domain?: string
     mail_proxy_enabled?: boolean
+    exa_browser_mode?: ExaBrowserMode
     gptmail_base_url?: string
     gptmail_api_key?: string
     gptmail_verify_ssl?: boolean
@@ -132,6 +134,14 @@ export interface Settings {
   session: {
     expire_hours: number
   }
+}
+
+export interface ExaBrowserCheckResult {
+  success: boolean
+  browser_mode?: ExaBrowserMode
+  message?: string
+  error?: string
+  error_code?: string
 }
 
 export interface LogEntry {

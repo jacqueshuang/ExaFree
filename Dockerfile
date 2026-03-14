@@ -38,6 +38,7 @@ RUN if [ -f /etc/apt/sources.list ]; then \
         libxss1 \
         libxtst6 \
         lsb-release \
+        xvfb \
         xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 

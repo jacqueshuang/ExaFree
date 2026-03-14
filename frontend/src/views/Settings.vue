@@ -142,6 +142,30 @@
                   启用邮箱代理（使用账户操作代理）
                 </Checkbox>
                 <div class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>Exa 浏览器模式</span>
+                  <HelpTip text="默认使用无头浏览器。若注册日志提示 Vercel Security Checkpoint / Code 21，请切换为有头浏览器后重试。" />
+                </div>
+                <SelectMenu
+                  v-model="localSettings.basic.exa_browser_mode"
+                  :options="exaBrowserModeOptions"
+                  class="w-full"
+                />
+                <button
+                  type="button"
+                  class="w-full rounded-2xl border border-border px-4 py-2 text-sm text-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
+                  :disabled="browserChecking"
+                  @click="handleCheckExaBrowser"
+                >
+                  {{ browserChecking ? '自检中...' : '检查 Exa 浏览器环境' }}
+                </button>
+                <p
+                  v-if="exaBrowserCheckResult"
+                  class="text-[11px]"
+                  :class="exaBrowserCheckResult.success ? 'text-emerald-600' : 'text-amber-600'"
+                >
+                  {{ exaBrowserCheckResult.success ? exaBrowserCheckResult.message : exaBrowserCheckResult.error }}
+                </p>
+                <div class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>Exa 兑换码自动兑换</span>
                   <HelpTip text="默认关闭。开启后在注册流程中自动尝试兑换下方填写的兑换码。" />
                 </div>
@@ -378,7 +402,7 @@ import { settingsApi } from '@/api/settings'
 import SelectMenu from '@/components/ui/SelectMenu.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import HelpTip from '@/components/ui/HelpTip.vue'
-import type { Settings } from '@/types/api'
+import type { ExaBrowserCheckResult, Settings } from '@/types/api'
 
 const settingsStore = useSettingsStore()
 const { settings, isLoading } = storeToRefs(settingsStore)
@@ -390,6 +414,8 @@ const errorMessage = ref('')
 const dbFileInput = ref<HTMLInputElement | null>(null)
 const dbExporting = ref(false)
 const dbImporting = ref(false)
+const browserChecking = ref(false)
+const exaBrowserCheckResult = ref<ExaBrowserCheckResult | null>(null)
 
 // 429冷却时间：小时 ↔ 秒 的转换
 const DEFAULT_COOLDOWN_HOURS = {
@@ -431,6 +457,10 @@ const linuxdoCallbackHint = computed(() => {
 })
 
 const tempMailProviderOptions = mailProviderOptions
+const exaBrowserModeOptions = [
+  { label: '无头浏览器（默认）', value: 'headless' },
+  { label: '有头浏览器（兼容性优先）', value: 'headful' },
+]
 
 watch(settings, (value) => {
   if (!value) return
@@ -497,6 +527,7 @@ watch(settings, (value) => {
     ? next.basic.freemail_domain
     : ''
   next.basic.mail_proxy_enabled = next.basic.mail_proxy_enabled ?? false
+  next.basic.exa_browser_mode = next.basic.exa_browser_mode === 'headful' ? 'headful' : 'headless'
   next.basic.gptmail_base_url = next.basic.gptmail_base_url || 'https://mail.chatgpt.org.uk'
   next.basic.gptmail_api_key = typeof next.basic.gptmail_api_key === 'string'
     ? next.basic.gptmail_api_key
@@ -539,6 +570,31 @@ const handleSave = async () => {
     toast.error(error.message || '保存失败')
   } finally {
     isSaving.value = false
+  }
+}
+
+const handleCheckExaBrowser = async () => {
+  const browserMode = localSettings.value?.basic?.exa_browser_mode
+  browserChecking.value = true
+  exaBrowserCheckResult.value = null
+  try {
+    const result = await settingsApi.checkExaBrowser(browserMode)
+    exaBrowserCheckResult.value = result
+    if (result.success) {
+      toast.success(result.message || 'Exa 浏览器环境检查通过')
+    } else {
+      toast.error(result.error || 'Exa 浏览器环境检查失败')
+    }
+  } catch (error: any) {
+    const message = error.message || 'Exa 浏览器环境检查失败'
+    exaBrowserCheckResult.value = {
+      success: false,
+      browser_mode: browserMode,
+      error: message,
+    }
+    toast.error(message)
+  } finally {
+    browserChecking.value = false
   }
 }
 
@@ -589,4 +645,3 @@ const handleImportDatabase = async () => {
   }
 }
 </script>
-

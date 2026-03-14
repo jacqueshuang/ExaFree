@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Settings } from '@/types/api'
+import type { ExaBrowserCheckResult, Settings } from '@/types/api'
 
 export const settingsApi = {
   // 获取设置
@@ -9,6 +9,12 @@ export const settingsApi = {
   // 更新设置
   update: (settings: Settings) =>
     apiClient.put('/api/admin/settings', settings),
+
+  checkExaBrowser: (browserMode?: 'headless' | 'headful') =>
+    apiClient.post<
+      { browser_mode?: 'headless' | 'headful' },
+      ExaBrowserCheckResult
+    >('/api/admin/exa/browser-check', browserMode ? { browser_mode: browserMode } : {}),
 
   exportDatabase: () =>
     apiClient.get<never, Blob>('/api/admin/database/export', {

@@ -40,6 +40,13 @@ def _parse_bool(value, default: bool) -> bool:
     return default
 
 
+def _normalize_exa_browser_mode(value, default: str = "headless") -> str:
+    text = str(value or "").strip().lower()
+    if text in ("headless", "headful"):
+        return text
+    return default
+
+
 # ==================== 配置模型定义 ====================
 
 class BasicConfig(BaseModel):
@@ -69,6 +76,7 @@ class BasicConfig(BaseModel):
     freemail_verify_ssl: bool = Field(default=True, description="Freemail SSL校验")
     freemail_domain: str = Field(default="", description="Freemail 邮箱域名（可选，留空则随机选择）")
     mail_proxy_enabled: bool = Field(default=False, description="是否启用临时邮箱代理（使用账户操作代理）")
+    exa_browser_mode: str = Field(default="headless", description="Exa 注册浏览器模式：headless/headful")
     gptmail_base_url: str = Field(default="https://mail.chatgpt.org.uk", description="GPTMail API地址")
     gptmail_api_key: str = Field(default="gpt-test", description="GPTMail API key")
     gptmail_verify_ssl: bool = Field(default=True, description="GPTMail SSL校验")
@@ -256,6 +264,10 @@ class ConfigManager:
             freemail_verify_ssl=_parse_bool(basic_data.get("freemail_verify_ssl"), True),
             freemail_domain=str(basic_data.get("freemail_domain") or "").strip(),
             mail_proxy_enabled=_parse_bool(basic_data.get("mail_proxy_enabled"), False),
+            exa_browser_mode=_normalize_exa_browser_mode(
+                basic_data.get("exa_browser_mode") or basic_data.get("browser_mode"),
+                "headless",
+            ),
             gptmail_base_url=str(basic_data.get("gptmail_base_url") or "https://mail.chatgpt.org.uk").strip(),
             gptmail_api_key=str(basic_data.get("gptmail_api_key") or "").strip(),
             gptmail_verify_ssl=_parse_bool(basic_data.get("gptmail_verify_ssl"), True),

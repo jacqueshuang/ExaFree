@@ -56,6 +56,7 @@ from core.account import (
     bulk_delete_accounts as _bulk_delete_accounts
 )
 from core.proxy_utils import parse_proxy_setting
+from core.exa_automation import ExaAutomation
 
 # 导入 Uptime 追踪器
 from core import uptime as uptime_tracker
@@ -2077,6 +2078,7 @@ async def admin_get_settings(request: Request):
             "freemail_verify_ssl": config.basic.freemail_verify_ssl,
             "freemail_domain": config.basic.freemail_domain,
             "mail_proxy_enabled": config.basic.mail_proxy_enabled,
+            "exa_browser_mode": str(getattr(config.basic, "exa_browser_mode", "headless") or "headless"),
             "gptmail_base_url": config.basic.gptmail_base_url,
             "gptmail_api_key": config.basic.gptmail_api_key,
             "gptmail_verify_ssl": config.basic.gptmail_verify_ssl,
@@ -2153,6 +2155,7 @@ async def admin_update_settings(request: Request, new_settings: dict = Body(...)
         basic.setdefault("freemail_verify_ssl", config.basic.freemail_verify_ssl)
         basic.setdefault("freemail_domain", config.basic.freemail_domain)
         basic.setdefault("mail_proxy_enabled", config.basic.mail_proxy_enabled)
+        basic.setdefault("exa_browser_mode", str(getattr(config.basic, "exa_browser_mode", "headless") or "headless"))
         basic.setdefault("gptmail_base_url", config.basic.gptmail_base_url)
         basic.setdefault("gptmail_api_key", config.basic.gptmail_api_key)
         basic.setdefault("gptmail_verify_ssl", config.basic.gptmail_verify_ssl)
@@ -2203,6 +2206,9 @@ async def admin_update_settings(request: Request, new_settings: dict = Body(...)
         ).strip()
         basic["linuxdo_redirect_uri"] = str(basic.get("linuxdo_redirect_uri") or "").strip()
         basic["linuxdo_scope"] = str(basic.get("linuxdo_scope") or "openid profile email").strip()
+        basic["exa_browser_mode"] = str(basic.get("exa_browser_mode") or "headless").strip().lower()
+        if basic["exa_browser_mode"] not in ("headless", "headful"):
+            basic["exa_browser_mode"] = "headless"
         basic.pop("duckmail_proxy", None)
         basic.pop("browser_engine", None)
         basic.pop("browser_mode", None)
@@ -2370,6 +2376,23 @@ async def admin_update_settings(request: Request, new_settings: dict = Body(...)
     except Exception as e:
         logger.error(f"[CONFIG] 更新设置失败: {str(e)}")
         raise HTTPException(500, f"更新失败: {str(e)}")
+
+
+@app.post("/api/admin/exa/browser-check")
+@require_login()
+async def admin_check_exa_browser(request: Request, payload: dict = Body(default=None)):
+    """检查当前浏览器模式下 Exa 登录页可达性。"""
+    requested_mode = str((payload or {}).get("browser_mode") or "").strip().lower()
+    if requested_mode not in ("", "headless", "headful"):
+        requested_mode = ""
+
+    proxy_for_auth, _ = parse_proxy_setting(config.basic.proxy_for_auth)
+    automation = ExaAutomation(
+        proxy=proxy_for_auth,
+        timeout_ms=45_000,
+        headless=(requested_mode == "headless") if requested_mode else None,
+    )
+    return await asyncio.to_thread(automation.check_browser_environment)
 
 
 @app.get("/api/admin/database/export")
@@ -3065,4 +3088,3 @@ if __name__ == "__main__":
         print(f"检查端口占用时出错: {e}")
 
     uvicorn.run(app, host="0.0.0.0", port=port)
-

@@ -23,6 +23,7 @@
 *.tmp
 *.swp
 *.swo
+data/
 
 # OS and editor files
 .DS_Store
