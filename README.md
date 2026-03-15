@@ -32,10 +32,7 @@
 
 ## Docker部署（推荐）
 
-```bash
-docker pull ghcr.io/chengtx809/exafree:main
-docker run --rm -p 7860:7860 -v ./data:/app/data ghcr.io/chengtx809/exafree:main
-```
+
 
 访问：
 
