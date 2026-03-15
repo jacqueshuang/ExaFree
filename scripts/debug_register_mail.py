@@ -213,7 +213,7 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--browser-proxy",
-        default="",
+        default="http://192.168.2.1:30001",
         help="Playwright 浏览器代理地址（可选），例如 http://127.0.0.1:7890",
     )
     parser.add_argument(
