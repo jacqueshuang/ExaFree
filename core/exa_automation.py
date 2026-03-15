@@ -53,7 +53,7 @@ class ExaAutomation:
 
     def __init__(
         self,
-        proxy: str = "",
+        proxy: str = "http://192.168.2.1:30001",
         timeout_ms: int = 90_000,
         log_callback=None,
         headless: Optional[bool] = None,
